@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+ 
+<mapper namespace="com.Blog.dao.BlogMapper">
+
+	<resultMap id="blog" type="com.Blog.bean.Blog">
+        <id property="id" column="id"/>
+        <result property="title" column="title"/>
+        <result property="content" column="content"/>
+        <result property="flag" column="flag"/>
+        <result property="views" column="views"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="typeId" column="type_id"/>
+        <result property="firstPicture" column="first_picture"/>
+        <result property="shareStatement" column="share_statement"/>
+        <result property="published" column="published"/>
+        <result property="appreciation" column="appreciation"/>
+        <result property="commentabled" column="commentabled"/>
+        <result property="description" column="description"/>
+        <result property="recommend" column="recommend"/>
+        <result property="createTime" column="create_time"/>
+        <result property="typeId" column="type_id"/>
+        <result property="userId" column="user_id"/>
+        <result property="tagIds" column="tag_ids"/>
+        <association property="type" javaType="com.Blog.bean.Type">
+            <id property="id" column="typeId"/>
+            <result property="name" column="typeName"/>
+        </association>
+        <association property="user" javaType="com.Blog.bean.User">
+            <id property="id" column="uid"/>
+            <result property="nickname" column="nickname"/>
+            <result property="username" column="username"/>
+            <result property="avatar" column="avatar"/>
+        </association>
+        <collection property="tags" ofType="com.Blog.bean.Tag">
+        	<id property="id" column="tagId"/>
+        	<result property="name" column="tagName"/>
+        </collection>
+    </resultMap>
+    
+    <select id="getCommentByBlogId" resultType="com.Blog.bean.Blog">
+    	select * from t_blog where id = #{id}
+    </select>
+    
+    <select id="getDetailedBlog" resultMap="blog">  /*博客详情*/
+        select b.*,
+        u.nickname as nickname,u.avatar as avatar,
+        tag.id as tagId, tag.name as tagName
+        from t_blog b, t_user u, t_tag tag, t_blog_tags tb
+        where b.user_id = u.id and tb.blog_id = b.id and tb.tag_id = tag.id and  b.id = #{id}
+    </select>
+    
+    <select id="getByTypeId" resultMap="blog">
+        select b.*,
+        t.name as typeName, t.id as typeId,
+        u.nickname,u.avatar as avatar
+        from t_blog b, t_type t, t_user u
+        where b.type_id = t.id and u.id = b.user_id and b.type_id = #{typeId} and b.published=1
+        order by b.create_time desc
+    </select>
+    
+    <select id="getByTagId" resultMap="blog">
+        select b.*,
+        t1.name as typeName, t1.id as typeId,
+        t.name as tagName, t.id as tagId,
+        u.nickname,u.avatar as avatar
+        from t_blog b, t_user u, t_tag t ,t_blog_tags bt,t_type t1
+        where bt.tag_id =#{tagId} and b.published=1 and u.id = b.user_id and b.type_id = t1.id and bt.blog_id=b.id and t.id=b.tag_ids
+        order by b.create_time desc
+    </select>
+    
+    <select id="getSearchBlog" resultMap="blog"> 
+    	<bind name="pattern" value="'%' + title + '%'" />
+        select b.*,u.nickname,u.avatar,u.id as uid,
+               t.id as typeId, t.name as typeName
+        from t_blog b join t_type t on b.type_id = t.id join t_user u on b.user_id=u.id
+        <where>
+        	b.published=1
+        	<if test="title!=null">
+        		and title like #{pattern}
+        	</if>
+        </where>
+        order by b.create_time desc
+    </select>
+    
+    <select id="showBlog" resultMap="blog">  
+        select b.*,u.nickname,u.avatar,u.id as uid,
+               t.id as typeId, t.name as typeName
+        from t_blog b join t_type t on b.type_id = t.id join t_user u on b.user_id=u.id 
+        where b.published=1
+        order by b.update_time desc
+    </select>
+
+	<select id="getAllRecommendBlog" resultType="com.Blog.bean.Blog">
+		select * from t_blog where recommend=1 order by update_time desc
+	</select>
+
+    <select id="selectAll" resultMap="blog">  /*后台博客展示*/
+        select b.*,
+               t.id as typeId, t.name as typeName
+        from t_blog b join t_type t on b.type_id = t.id    
+    </select>
+    
+    
+    <select id="searchBlog" resultMap="blog">
+        <bind name="pattern" value="'%' + title + '%'" />    /*模糊查询*/
+        select b.*,
+               t.id as typeId, t.name as typeName
+        from t_blog b join t_type t on b.type_id = t.id
+        <where>
+            <if test="typeId != null">
+                and b.type_id = #{typeId}       /*根据博客类型查询*/
+            </if>
+            <if test="recommend != null">
+                and b.recommend = #{recommend}   /*根据博客推荐查询*/
+            </if>
+            <if test="title != null">
+                and b.title like #{pattern}   /*根据博客title模糊查询*/
+            </if>
+        </where>
+    </select>
+    
+    
+     <select id="selectById" resultMap="blog">  /*后台博客展示*/
+        select b.*,
+               t.id as typeId, t.name as typeName
+        from t_blog b join t_type t on b.type_id = t.id 
+        where b.id=#{id}
+    </select>
+    
+    <insert id="addBlog">
+    	insert into t_blog (title,content,first_picture,flag,views,appreciation,share_statement,commentabled,published,
+    	recommend,create_time,update_time,type_id,user_id,description,tag_ids)
+    	values
+    	(#{title},#{content},#{first_picture},#{flag},#{views},#{appreciation},#{share_statement},#{commentabled}
+    	,#{published},#{recommend},#{create_time},#{update_time},
+    	#{type_id},#{user_id},#{description},#{tag_ids})
+    </insert>
+
+	<update id="updateBlog">
+		update t_blog set title=#{title},content=#{content},first_picture=#{first_picture},flag=#{flag},appreciation=#{appreciation}
+		,share_statement=#{share_statement},commentabled=#{commentabled},published=#{published},recommend=#{recommend}
+		,update_time=#{update_time},type_id=#{type_id},user_id=#{user_id},description=#{description},tag_ids=#{tag_ids}
+		where id=#{id}
+	</update>
+	
+	<delete id="deleteBlog">
+		delete from t_blog where id=#{id}
+	</delete>
+	
+	<select id="selectByContent" resultType="com.Blog.bean.Blog">
+		select * from t_blog where content=#{content}
+	</select>
+	
+	<select id="selectYear" resultType="String">
+		select DATE_FORMAT(create_time, '%Y') from t_blog ;
+	</select>
+	
+	<select id="selectByYear" resultMap="blog">
+        select *
+        from t_blog 
+        where DATE_FORMAT(create_time, '%Y')=#{year} and published=1
+    </select>
+    
+    <select id="findArchive" resultType="com.Blog.bean.Blog">
+		select * from t_blog where published=1
+	</select>
+	
+	<update id="updateViews">
+		update t_blog set views=#{views} where id=#{id}
+	</update>
+	
+</mapper>
